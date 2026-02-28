@@ -42,6 +42,21 @@ export default function ProductCard({ item, reason, delay = 0 }) {
           <p style={{ fontSize: "11px", color: "#444", margin: 0, textTransform: "capitalize" }}>
             {item.category}
           </p>
+
+          {/* Store name badge */}
+          {item.store_name && (
+            <div style={{
+              display: "inline-flex", alignItems: "center", gap: "6px",
+              padding: "3px 10px", borderRadius: "20px", marginBottom: "8px",
+              background: "rgba(212,175,92,0.08)",
+              border: "1px solid rgba(212,175,92,0.2)",
+            }}>
+              <span style={{ fontSize: "8px", color: "#d4af5c" }}>🏪</span>
+              <span style={{ fontSize: "9px", color: "#d4af5c", letterSpacing: "0.1em" }}>
+                {item.store_name}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* AI Reason */}

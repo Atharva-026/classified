@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 
 export default function StoreLogin() {
   const [username, setUsername] = useState("")
@@ -109,10 +110,17 @@ export default function StoreLogin() {
           </button>
         </div>
 
-        {/* Default credentials hint */}
-        <p style={{ fontSize: "10px", color: "#2a2a2a", textAlign: "center", marginTop: "24px" }}>
-          Default: admin / stylesense123
-        </p>
+        <div style={{ textAlign: "center", marginTop: "24px", display: "flex", flexDirection: "column", gap: "8px" }}>
+          <p style={{ fontSize: "10px", color: "#2a2a2a", margin: 0 }}>
+            Default: admin / stylesense123
+          </p>
+          <p style={{ fontSize: "11px", color: "#333", margin: 0 }}>
+            New store?{" "}
+            <Link to="/store/register" style={{ color: "#d4af5c", textDecoration: "none", letterSpacing: "0.05em" }}>
+              Register here
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   )

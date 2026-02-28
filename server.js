@@ -33,6 +33,46 @@ function authMiddleware(req, res, next) {
   }
 }
 
+// ── Staff Register ──────────────────────────────────────
+app.post("/api/staff/register", async (req, res) => {
+  const { username, password, store_name } = req.body
+
+  if (!username || !password || !store_name) {
+    return res.status(400).json({ error: "All fields required" })
+  }
+  if (password.length < 6) {
+    return res.status(400).json({ error: "Password must be at least 6 characters" })
+  }
+
+  // Check if username already exists
+  const { data: existing } = await supabase
+    .from("staff")
+    .select("id")
+    .eq("username", username)
+    .single()
+
+  if (existing) {
+    return res.status(409).json({ error: "Username already taken" })
+  }
+
+  const password_hash = await bcrypt.hash(password, 10)
+
+  const { data, error } = await supabase
+    .from("staff")
+    .insert({ username, password_hash, store_name })
+    .select()
+    .single()
+
+  if (error) return res.status(500).json({ error: error.message })
+
+  const token = jwt.sign(
+    { id: data.id, username: data.username, store: data.store_name },
+    JWT_SECRET,
+    { expiresIn: "24h" }
+  )
+  res.json({ token, store: data.store_name })
+})
+
 // ── Staff Login ──────────────────────────────────────────
 app.post("/api/staff/login", async (req, res) => {
   const { username, password } = req.body
@@ -99,6 +139,7 @@ app.post("/api/inventory", authMiddleware, upload.single("image"), async (req, r
       sizes: JSON.parse(req.body.sizes || '["S","M","L","XL"]'),
       image_url,
       in_stock: true,
+      store_name: req.staff.store, // ← add this line
     }
 
     const { data, error } = await supabase.from("inventory").insert(item).select().single()
