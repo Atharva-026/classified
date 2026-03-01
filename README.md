@@ -26,11 +26,11 @@ No generic catalogues. No quiz-based approximations. Real body intelligence matc
 
 ## System Architecture
 
-![System Architecture](./src/assets/AI_Fashion_App_-_System_Architecture.jpg)
+![System Architecture](<./src/assets/AI Fashion App - System Architecture.jpg>)
 
 ### Body Type Classification
 
-![Body Type Classification](./src/assets/AI_Fashion_App_-_Body_Type_Classification.jpg)
+![Body Type Classification](<./src/assets/AI Fashion App - Body Type Classification.jpg>)
 
 ---
 
