@@ -43,7 +43,7 @@ export default function AddItemModal({ token, onClose, onAdded }) {
       if (imageFile) fd.append("image", imageFile)
       else if (form.image_url) fd.append("image_url", form.image_url)
 
-      const res = await fetch("http://localhost:3001/api/inventory", {
+      const res = await fetch("https://classified-stylesense-ai.onrender.com/api/inventory", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: fd

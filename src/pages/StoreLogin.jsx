@@ -13,7 +13,7 @@ export default function StoreLogin() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch("http://localhost:3001/api/staff/login", {
+      const res = await fetch("https://classified-stylesense-ai.onrender.com/api/staff/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password })

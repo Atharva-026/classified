@@ -15,7 +15,7 @@ export default function StorePage() {
   const fetchInventory = async () => {
     setLoading(true)
     try {
-      const res = await fetch("http://localhost:3001/api/inventory")
+      const res = await fetch("https://classified-stylesense-ai.onrender.com/api/inventory")
       const data = await res.json()
       setInventory(data)
     } finally {
@@ -25,7 +25,7 @@ export default function StorePage() {
 
   const handleDelete = async (id) => {
     if (!confirm("Delete this item?")) return
-    await fetch(`http://localhost:3001/api/inventory/${id}`, {
+    await fetch(`https://classified-stylesense-ai.onrender.com/api/inventory/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -33,7 +33,7 @@ export default function StorePage() {
   }
 
   const handleToggleStock = async (id, current) => {
-    await fetch(`http://localhost:3001/api/inventory/${id}/stock`, {
+    await fetch(`https://classified-stylesense-ai.onrender.com/api/inventory/${id}/stock`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ in_stock: !current })

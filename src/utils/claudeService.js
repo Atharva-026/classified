@@ -6,12 +6,12 @@ export async function getFashionSuggestions({
 }) {
   // Step 1: Fetch matching inventory from backend
   const inventoryRes = await fetch(
-    `http://localhost:3001/api/inventory?body_type=${bodyType}&occasion=${occasion}`
+    `https://classified-stylesense-ai.onrender.com/api/inventory?body_type=${bodyType}&occasion=${occasion}`
   )
   const inventory = await inventoryRes.json()
 
   // Step 2: Send to AI with real inventory context
-  const response = await fetch("http://localhost:3001/api/fashion", {
+  const response = await fetch("https://classified-stylesense-ai.onrender.com/api/fashion", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
