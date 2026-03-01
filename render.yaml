@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: stylesense-api
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      - key: STAFF_JWT_SECRET
+        sync: false
