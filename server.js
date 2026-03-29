@@ -6,9 +6,21 @@ import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
 import { createClient } from "@supabase/supabase-js"
 import multer from "multer"
+import AutoFlow from "autoflow-sdk"
 
 dotenv.config()
 
+// ── AutoFlow SDK ─────────────────────────────────────────
+const af = new AutoFlow({
+  endpoint:    "http://localhost:3000/api/event",
+  project:     "stylesense-ai",
+  environment: process.env.NODE_ENV || "production",
+  debug:       true
+})
+
+af.captureUncaughtExceptions()
+
+// ── App setup ────────────────────────────────────────────
 const app = express()
 app.use(cors())
 app.use(express.json())
@@ -33,7 +45,7 @@ function authMiddleware(req, res, next) {
   }
 }
 
-// ── Staff Register ──────────────────────────────────────
+// ── Staff Register ───────────────────────────────────────
 app.post("/api/staff/register", async (req, res) => {
   const { username, password, store_name } = req.body
 
@@ -44,7 +56,6 @@ app.post("/api/staff/register", async (req, res) => {
     return res.status(400).json({ error: "Password must be at least 6 characters" })
   }
 
-  // Check if username already exists
   const { data: existing } = await supabase
     .from("staff")
     .select("id")
@@ -63,7 +74,14 @@ app.post("/api/staff/register", async (req, res) => {
     .select()
     .single()
 
-  if (error) return res.status(500).json({ error: error.message })
+  if (error) {
+    await af.reportError(new Error(error.message), {
+      source:   "auth-register",
+      severity: "high",
+      username
+    })
+    return res.status(500).json({ error: error.message })
+  }
 
   const token = jwt.sign(
     { id: data.id, username: data.username, store: data.store_name },
@@ -76,16 +94,29 @@ app.post("/api/staff/register", async (req, res) => {
 // ── Staff Login ──────────────────────────────────────────
 app.post("/api/staff/login", async (req, res) => {
   const { username, password } = req.body
+
   const { data: staff } = await supabase
     .from("staff")
     .select("*")
     .eq("username", username)
     .single()
 
-  if (!staff) return res.status(401).json({ error: "Invalid credentials" })
+  if (!staff) {
+    await af.reportEvent("warning", "Failed login attempt", "medium", {
+      source: "auth-login",
+      username
+    })
+    return res.status(401).json({ error: "Invalid credentials" })
+  }
 
   const valid = await bcrypt.compare(password, staff.password_hash)
-  if (!valid) return res.status(401).json({ error: "Invalid credentials" })
+  if (!valid) {
+    await af.reportEvent("warning", "Failed login attempt — wrong password", "medium", {
+      source: "auth-login",
+      username
+    })
+    return res.status(401).json({ error: "Invalid credentials" })
+  }
 
   const token = jwt.sign(
     { id: staff.id, username: staff.username, store: staff.store_name },
@@ -104,7 +135,15 @@ app.get("/api/inventory", async (req, res) => {
   if (occasion)  query = query.contains("occasion", [occasion])
 
   const { data, error } = await query.order("created_at", { ascending: false })
-  if (error) return res.status(500).json({ error: error.message })
+
+  if (error) {
+    await af.reportError(new Error(error.message), {
+      source:   "inventory-fetch",
+      severity: "medium"
+    })
+    return res.status(500).json({ error: error.message })
+  }
+
   res.json(data)
 })
 
@@ -113,7 +152,6 @@ app.post("/api/inventory", authMiddleware, upload.single("image"), async (req, r
   try {
     let image_url = req.body.image_url || null
 
-    // Upload image to Supabase Storage if file provided
     if (req.file) {
       const filename = `${Date.now()}-${req.file.originalname}`
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -129,23 +167,36 @@ app.post("/api/inventory", authMiddleware, upload.single("image"), async (req, r
     }
 
     const item = {
-      name: req.body.name,
-      category: req.body.category,
-      occasion: JSON.parse(req.body.occasion),
-      body_types: JSON.parse(req.body.body_types),
-      colors: JSON.parse(req.body.colors),
-      price: parseFloat(req.body.price),
+      name:        req.body.name,
+      category:    req.body.category,
+      occasion:    JSON.parse(req.body.occasion),
+      body_types:  JSON.parse(req.body.body_types),
+      colors:      JSON.parse(req.body.colors),
+      price:       parseFloat(req.body.price),
       description: req.body.description,
-      sizes: JSON.parse(req.body.sizes || '["S","M","L","XL"]'),
+      sizes:       JSON.parse(req.body.sizes || '["S","M","L","XL"]'),
       image_url,
-      in_stock: true,
-      store_name: req.staff.store, // ← add this line
+      in_stock:    true,
+      store_name:  req.staff.store,
     }
 
     const { data, error } = await supabase.from("inventory").insert(item).select().single()
     if (error) throw error
+
+    // Track successful inventory additions
+    await af.reportEvent("info", "Inventory item added", "low", {
+      source: "inventory-add",
+      store:  req.staff.store,
+      item:   req.body.name
+    })
+
     res.json(data)
   } catch (err) {
+    await af.reportError(err, {
+      source:   "inventory-add",
+      severity: "high",
+      store:    req.staff?.store
+    })
     res.status(500).json({ error: err.message })
   }
 })
@@ -153,7 +204,16 @@ app.post("/api/inventory", authMiddleware, upload.single("image"), async (req, r
 // ── Delete inventory item (staff only) ──────────────────
 app.delete("/api/inventory/:id", authMiddleware, async (req, res) => {
   const { error } = await supabase.from("inventory").delete().eq("id", req.params.id)
-  if (error) return res.status(500).json({ error: error.message })
+
+  if (error) {
+    await af.reportError(new Error(error.message), {
+      source:   "inventory-delete",
+      severity: "medium",
+      itemId:   req.params.id
+    })
+    return res.status(500).json({ error: error.message })
+  }
+
   res.json({ success: true })
 })
 
@@ -161,8 +221,21 @@ app.delete("/api/inventory/:id", authMiddleware, async (req, res) => {
 app.patch("/api/inventory/:id/stock", authMiddleware, async (req, res) => {
   const { in_stock } = req.body
   const { data, error } = await supabase
-    .from("inventory").update({ in_stock }).eq("id", req.params.id).select().single()
-  if (error) return res.status(500).json({ error: error.message })
+    .from("inventory")
+    .update({ in_stock })
+    .eq("id", req.params.id)
+    .select()
+    .single()
+
+  if (error) {
+    await af.reportError(new Error(error.message), {
+      source:   "inventory-stock-toggle",
+      severity: "medium",
+      itemId:   req.params.id
+    })
+    return res.status(500).json({ error: error.message })
+  }
+
   res.json(data)
 })
 
@@ -170,6 +243,14 @@ app.patch("/api/inventory/:id/stock", authMiddleware, async (req, res) => {
 app.post("/api/fashion", async (req, res) => {
   const { messages, inventory } = req.body
   const apiKey = process.env.GROQ_API_KEY
+
+  if (!apiKey) {
+    await af.reportError(new Error("GROQ_API_KEY not configured"), {
+      source:   "groq-fashion-api",
+      severity: "critical"
+    })
+    return res.status(500).json({ error: "AI service not configured" })
+  }
 
   const inventoryContext = inventory?.length
     ? `\n\nAVAILABLE STORE INVENTORY (suggest ONLY from these real products):\n${
@@ -180,23 +261,23 @@ app.post("/api/fashion", async (req, res) => {
     : ""
 
   const systemMessage = {
-    role: "system",
+    role:    "system",
     content: `You are a professional fashion stylist working with a specific store's inventory.${inventoryContext}`
   }
 
   const body = JSON.stringify({
-    model: "llama-3.3-70b-versatile",
+    model:      "llama-3.3-70b-versatile",
     max_tokens: 1500,
-    messages: [systemMessage, ...messages]
+    messages:   [systemMessage, ...messages]
   })
 
   const options = {
     hostname: "api.groq.com",
-    path: "/openai/v1/chat/completions",
-    method: "POST",
+    path:     "/openai/v1/chat/completions",
+    method:   "POST",
     headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type":   "application/json",
+      "Authorization":  `Bearer ${apiKey}`,
       "Content-Length": Buffer.byteLength(body),
     },
   }
@@ -204,25 +285,59 @@ app.post("/api/fashion", async (req, res) => {
   const proxyReq = https.request(options, (proxyRes) => {
     let data = ""
     proxyRes.on("data", chunk => data += chunk)
-    proxyRes.on("end", () => {
+    proxyRes.on("end", async () => {
       try {
         const parsed = JSON.parse(data)
+
         if (!parsed.choices) {
-          console.log("Groq error:", data)
+          await af.reportEvent("error", "Groq API returned no choices", "high", {
+            source:   "groq-fashion-api",
+            response: data.slice(0, 200)
+          })
           return res.status(500).json({ error: "Groq error" })
         }
+
         const text = parsed.choices[0].message.content
-        console.log("AI Response:", text.slice(0, 500)) // ← now in correct place
+        console.log("AI Response:", text.slice(0, 500))
+
+        // Track successful AI requests
+        await af.reportEvent("info", "Fashion AI request served", "low", {
+          source:       "groq-fashion-api",
+          messageCount: messages.length
+        })
+
         res.json({ content: [{ text }] })
       } catch (e) {
+        await af.reportError(e, {
+          source:   "groq-fashion-api",
+          severity: "high"
+        })
         res.status(500).json({ error: "Parse error" })
       }
     })
   })
 
-  proxyReq.on("error", err => res.status(500).json({ error: err.message }))
+  proxyReq.on("error", async (err) => {
+    await af.reportError(err, {
+      source:   "groq-fashion-api",
+      severity: "high"
+    })
+    res.status(500).json({ error: err.message })
+  })
+
   proxyReq.write(body)
   proxyReq.end()
 })
 
+// ── Global error middleware (catches all Express errors) ─
+app.use(af.middleware())
+
+// Prevent Render free tier cold start
+setInterval(() => {
+  https.get("https://classified-stylesense-ai.onrender.com/api/inventory",
+    (res) => console.log(`Keep-alive: ${res.statusCode}`)
+  ).on("error", () => {})
+}, 14 * 60 * 1000)
+
+// ── Start server ─────────────────────────────────────────
 app.listen(3001, () => console.log("✅ StyleSense API running on port 3001"))

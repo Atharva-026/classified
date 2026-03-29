@@ -17,6 +17,7 @@
     "@mediapipe/pose": "^0.5.1675469404",
     "@stream-io/video-react-sdk": "^1.32.4",
     "@supabase/supabase-js": "^2.98.0",
+    "autoflow-sdk": "^1.0.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
