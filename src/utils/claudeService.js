@@ -65,7 +65,7 @@ IMPORTANT: The field must be called exactly "stylingTips" not "styling_tips" or 
   parsed.recommendedProducts = parsed.recommendedProducts
     .map(rec => ({
       ...rec,
-      ...inventory.find(item => item.id === rec.id)
+      ...inventory.find(item => (item._id || item.id) === rec.id)
     }))
     .filter(rec => rec.name) // remove any AI hallucinated IDs
 
