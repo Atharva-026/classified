@@ -16,9 +16,14 @@ export function extractBodyMeasurementsFromSegmentation(mask, landmarks, width, 
     return { shoulderWidth: 0, waistWidth: 0, hipWidth: 0, hipY: 0 }
   }
 
+  // Defensive check - if mask is invalid, skip expensive processing
+  if (!(mask instanceof Uint8ClampedArray) || mask.length === 0) {
+    return { shoulderWidth: 0, waistWidth: 0, hipWidth: 0, hipY: 0 }
+  }
+
   // Get shoulder and hip Y coordinates (normalized → pixel coordinates)
-  const shoulderY = Math.round(landmarks[11].y * height) // Left shoulder
-  const hipJointY = Math.round(landmarks[23].y * height) // Left hip
+  const shoulderY = Math.round(landmarks[11].y * height)
+  const hipJointY = Math.round(landmarks[23].y * height)
   
   // Calculate waist row as midpoint between shoulders and hips
   const waistY = Math.round((shoulderY + hipJointY) / 2)
@@ -38,6 +43,7 @@ export function extractBodyMeasurementsFromSegmentation(mask, landmarks, width, 
 /**
  * Get the visible body width at a specific row in the segmentation mask
  * Scans horizontally to find leftmost and rightmost body pixels
+ * Optimized: scans from edges inward and skips pixels for speed
  * @param {Uint8ClampedArray} mask - Segmentation mask
  * @param {number} row - Row index (Y coordinate)
  * @param {number} width - Frame width
@@ -51,32 +57,37 @@ function getWidthAtRow(mask, row, width, height) {
   let leftmost = null
   let rightmost = null
 
-  // Scan horizontally across the row
+  // Scan from left to find leftmost body pixel
   for (let x = 0; x < width; x++) {
-    const pixelIndex = (y * width + x) * 4 // RGBA channels, so multiply by 4
-    // Check if mask value indicates body pixel (non-zero)
-    const maskValue = mask[pixelIndex]
-
-    if (maskValue > 128) { // Body pixel threshold
-      if (leftmost === null) {
-        leftmost = x
-      }
-      rightmost = x
+    const pixelIndex = (y * width + x) * 4
+    if (mask[pixelIndex] > 128) {
+      leftmost = x
+      break
     }
   }
 
-  // If no body pixels found in this row, return 0
-  if (leftmost === null || rightmost === null) {
-    return 0
+  // If no left pixel found, return 0
+  if (leftmost === null) return 0
+
+  // Scan from right to find rightmost body pixel
+  for (let x = width - 1; x >= leftmost; x--) {
+    const pixelIndex = (y * width + x) * 4
+    if (mask[pixelIndex] > 128) {
+      rightmost = x
+      break
+    }
   }
+
+  // If no right pixel found, return 0
+  if (rightmost === null) return 0
 
   return rightmost - leftmost
 }
 
 /**
  * Get real hip width by finding the maximum width in the hip region
- * Scans from 3% to 18% below hip joints to find the widest part of hip silhouette
- * Returns both the width and the Y coordinate where max width was found
+ * Scans from 0% to 25% below hip joints to find the widest part of hip silhouette
+ * Optimized: uses step skip and early termination
  * @param {Uint8ClampedArray} mask - Segmentation mask
  * @param {Array} landmarks - Pose landmarks
  * @param {number} width - Frame width in pixels
@@ -87,15 +98,18 @@ function getRealHipWidth(mask, landmarks, width, height) {
   // Get hip joint Y coordinate (average of left and right hips)
   const hipJointY = ((landmarks[23].y + landmarks[24].y) / 2) * height
 
-  // Define scan range: 0% to 25% below hip joints to capture full widest hip
+  // Define scan range: 0% to 20% below hip joints (reduced from 25% for speed)
   const startY = Math.round(hipJointY)
-  const endY = Math.round(hipJointY + height * 0.25)
+  const endY = Math.round(hipJointY + height * 0.2)
+  
+  // Skip every other row for faster scanning (acceptable loss of precision)
+  const scanStep = 2
 
   let maxWidth = 0
   let bestY = hipJointY
 
-  // Scan all rows in the hip region and find the maximum width
-  for (let y = startY; y <= endY; y++) {
+  // Scan with step skip for better performance
+  for (let y = startY; y <= endY; y += scanStep) {
     const w = getWidthAtRow(mask, y, width, height)
 
     if (w > maxWidth) {

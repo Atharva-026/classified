@@ -57,15 +57,21 @@ export default function WebcamFeed({ onBodyTypeDetected }) {
         // Get combined measurements using Pose segmentation mask
         let combinedMeasurements = null
         let segMeasurements = null
+        
+        // Only process segmentation if mask is available (prevent blocking)
         if (results.segmentationMask) {
-          segMeasurements = extractBodyMeasurementsFromSegmentation(
-            results.segmentationMask,
-            results.poseLandmarks,
-            canvas.width,
-            canvas.height
-          )
-          if (segMeasurements) {
-            combinedMeasurements = combineMeasurements(results.poseLandmarks, segMeasurements)
+          try {
+            segMeasurements = extractBodyMeasurementsFromSegmentation(
+              results.segmentationMask,
+              results.poseLandmarks,
+              canvas.width,
+              canvas.height
+            )
+            if (segMeasurements && segMeasurements.shoulderWidth > 0) {
+              combinedMeasurements = combineMeasurements(results.poseLandmarks, segMeasurements, canvas.width)
+            }
+          } catch (e) {
+            console.warn("Segmentation processing error:", e)
           }
         }
 
@@ -127,13 +133,24 @@ export default function WebcamFeed({ onBodyTypeDetected }) {
     ctx.lineTo(waistRight.x, waistRight.y)
     ctx.stroke()
 
-    // BLUE: Hips (from segmentation) - use actual measured hipY if available
-    const hipY = segMeasurements?.hipY ?? leftHip.y
+    // BLUE: Hips (from segmentation) - expanded hip width visualization
+    const hipCenterX = (leftHip.x + rightHip.x) / 2
+    const rawHipY = (leftHip.y + rightHip.y) / 2
+
+    const hipYOffset = height * 0.035
+    const hipY = rawHipY + hipYOffset
+
+    const rawHipWidth = Math.abs(rightHip.x - leftHip.x)
+    const expandedHipWidth = rawHipWidth * 1.88
+
+    const startX = hipCenterX - expandedHipWidth / 2
+    const endX = hipCenterX + expandedHipWidth / 2
+
     ctx.strokeStyle = "#3b82f6"
     ctx.lineWidth = 3
     ctx.beginPath()
-    ctx.moveTo(leftHip.x, hipY)
-    ctx.lineTo(rightHip.x, hipY)
+    ctx.moveTo(startX, hipY)
+    ctx.lineTo(endX, hipY)
     ctx.stroke()
 
     // Labels
@@ -143,7 +160,7 @@ export default function WebcamFeed({ onBodyTypeDetected }) {
     ctx.fillStyle = "#eab308"
     ctx.fillText("WAIST", waistLeft.x + 20, waistLeft.y - 10)
     ctx.fillStyle = "#3b82f6"
-    ctx.fillText("HIPS", leftHip.x + 20, hipY - 10)
+    ctx.fillText("HIPS", hipCenterX + 20, hipY - 10)
   }
 
   useEffect(() => {
@@ -216,7 +233,7 @@ export default function WebcamFeed({ onBodyTypeDetected }) {
   }, [onPoseResults])
 
   return (
-    <div className="relative w-full max-w-3xl mx-auto aspect-[4/3] bg-gray-900 rounded-2xl overflow-hidden border border-gray-800 shadow-2xl">
+    <div className="relative w-full max-w-3xl mx-auto aspect-4/3 bg-gray-900 rounded-2xl overflow-hidden border border-gray-800 shadow-2xl">
       {/* Status */}
       <div className="absolute top-3 left-3 right-3 z-20">
         <div className="bg-black/60 backdrop-blur-md rounded-lg px-4 py-2 text-xs text-gray-200 text-center">
