@@ -1,0 +1,210 @@
+/**
+ * Segmentation Processor
+ * Uses MediaPipe segmentation mask + pose landmarks to measure real body widths from silhouette
+ */
+
+/**
+ * Extract body measurements from segmentation mask using pose landmarks
+ * @param {Uint8ClampedArray} mask - Segmentation mask (0 = background, 255 = foreground/person)
+ * @param {Array} landmarks - Pose landmarks (33 points with normalized x, y, z, visibility)
+ * @param {number} width - Frame width in pixels
+ * @param {number} height - Frame height in pixels
+ * @returns {Object} { shoulderWidth, waistWidth, hipWidth } in pixels
+ */
+export function extractBodyMeasurementsFromSegmentation(mask, landmarks, width, height) {
+  if (!mask || !landmarks || landmarks.length < 25) {
+    return { shoulderWidth: 0, waistWidth: 0, hipWidth: 0 }
+  }
+
+  // Get shoulder and hip Y coordinates (normalized → pixel coordinates)
+  const shoulderY = Math.round(landmarks[11].y * height) // Left shoulder
+  const hipY = Math.round(landmarks[23].y * height) // Left hip
+  
+  // Calculate waist row as midpoint between shoulders and hips
+  const waistY = Math.round((shoulderY + hipY) / 2)
+
+  // Extract widths from mask at each row
+  const shoulderWidth = getWidthAtRow(mask, shoulderY, width, height)
+  const waistWidth = getWidthAtRow(mask, waistY, width, height)
+  const hipWidth = getWidthAtRow(mask, hipY, width, height)
+
+  return { shoulderWidth, waistWidth, hipWidth }
+}
+
+/**
+ * Get the visible body width at a specific row in the segmentation mask
+ * Scans horizontally to find leftmost and rightmost body pixels
+ * @param {Uint8ClampedArray} mask - Segmentation mask
+ * @param {number} row - Row index (Y coordinate)
+ * @param {number} width - Frame width
+ * @param {number} height - Frame height
+ * @returns {number} Width of visible body pixels at this row
+ */
+function getWidthAtRow(mask, row, width, height) {
+  // Clamp row to valid range
+  const y = Math.max(0, Math.min(row, height - 1))
+
+  let leftmost = null
+  let rightmost = null
+
+  // Scan horizontally across the row
+  for (let x = 0; x < width; x++) {
+    const pixelIndex = (y * width + x) * 4 // RGBA channels, so multiply by 4
+    // Check if mask value indicates body pixel (non-zero)
+    const maskValue = mask[pixelIndex]
+
+    if (maskValue > 128) { // Body pixel threshold
+      if (leftmost === null) {
+        leftmost = x
+      }
+      rightmost = x
+    }
+  }
+
+  // If no body pixels found in this row, return 0
+  if (leftmost === null || rightmost === null) {
+    return 0
+  }
+
+  return rightmost - leftmost
+}
+
+/**
+ * Calculate pose landmarks width using joint positions
+ * @param {Array} landmarks - Pose landmarks
+ * @param {string} type - 'shoulder', 'waist', or 'hip'
+ * @param {number} width - Frame width
+ * @returns {number} Width in pixels
+ */
+function getLandmarkWidth(landmarks, type, width) {
+  if (type === 'shoulder') {
+    // Distance between left and right shoulders (landmarks 11 and 12)
+    const left = landmarks[11]?.x ?? 0
+    const right = landmarks[12]?.x ?? 0
+    return Math.abs(right - left) * width
+  } else if (type === 'waist') {
+    // For waist, estimate from lower ribs or use average of shoulder and hip
+    // Landmarks 23/24 are hips, so we'll estimate waist as ~60% between shoulder and hip
+    const shoulderWidth = getLandmarkWidth(landmarks, 'shoulder', width)
+    const hipWidth = getLandmarkWidth(landmarks, 'hip', width)
+    return (shoulderWidth + hipWidth) / 2
+  } else if (type === 'hip') {
+    // Distance between left and right hips (landmarks 23 and 24)
+    const left = landmarks[23]?.x ?? 0
+    const right = landmarks[24]?.x ?? 0
+    return Math.abs(right - left) * width
+  }
+  return 0
+}
+
+/**
+ * Combine segmentation measurements with pose landmark measurements
+ * Applies weighted blending for more robust body type classification
+ * @param {Array} landmarks - Pose landmarks
+ * @param {Object} segMeasurements - { shoulderWidth, waistWidth, hipWidth } from segmentation
+ * @param {number} frameWidth - Frame width in pixels
+ * @returns {Object} Final blended measurements { shoulderWidth, waistWidth, hipWidth }
+ */
+export function combineMeasurements(landmarks, segMeasurements, frameWidth) {
+  if (!landmarks || !segMeasurements) {
+    return { shoulderWidth: 0, waistWidth: 0, hipWidth: 0 }
+  }
+
+  // Get landmark-based measurements
+  const landmarkShoulderWidth = getLandmarkWidth(landmarks, 'shoulder', frameWidth)
+  const landmarkWaistWidth = getLandmarkWidth(landmarks, 'waist', frameWidth)
+  const landmarkHipWidth = getLandmarkWidth(landmarks, 'hip', frameWidth)
+
+  // Blend measurements: prioritize segmentation (more accurate silhouette)
+  // but use landmarks as fallback when segmentation is unreliable
+  const finalShoulder =
+    segMeasurements.shoulderWidth > 0
+      ? segMeasurements.shoulderWidth * 0.7 + landmarkShoulderWidth * 0.3
+      : landmarkShoulderWidth
+
+  const finalWaist =
+    segMeasurements.waistWidth > 0
+      ? segMeasurements.waistWidth * 0.75 + landmarkWaistWidth * 0.25
+      : landmarkWaistWidth
+
+  const finalHip =
+    segMeasurements.hipWidth > 0
+      ? segMeasurements.hipWidth * 0.8 + landmarkHipWidth * 0.2
+      : landmarkHipWidth
+
+  return {
+    shoulderWidth: finalShoulder,
+    waistWidth: finalWaist,
+    hipWidth: finalHip
+  }
+}
+
+/**
+ * Calculate body type ratio from measurements
+ * @param {Object} measurements - { shoulderWidth, waistWidth, hipWidth }
+ * @returns {Object} { shoulderToHipRatio, waistToHipRatio, bodyType }
+ */
+export function calculateBodyTypeFromMeasurements(measurements) {
+  const { shoulderWidth, waistWidth, hipWidth } = measurements
+
+  // Avoid division by zero
+  if (hipWidth === 0) {
+    return { shoulderToHipRatio: 0, waistToHipRatio: 0, bodyType: 'unknown' }
+  }
+
+  const shoulderToHipRatio = shoulderWidth / hipWidth
+  const waistToHipRatio = waistWidth / hipWidth
+
+  // Improved classification logic using waist measurements
+
+  // Hourglass → shoulders ≈ hips, narrow waist
+  if (
+    shoulderToHipRatio >= 0.9 &&
+    shoulderToHipRatio <= 1.1 &&
+    waistToHipRatio < 0.75
+  ) {
+    return {
+      shoulderToHipRatio,
+      waistToHipRatio,
+      bodyType: 'hourglass'
+    }
+  }
+
+  // Inverted triangle → shoulders clearly wider
+  if (shoulderToHipRatio > 1.15) {
+    return {
+      shoulderToHipRatio,
+      waistToHipRatio,
+      bodyType: 'inverted_triangle'
+    }
+  }
+
+  // Pear → hips clearly wider
+  if (shoulderToHipRatio < 0.85) {
+    return {
+      shoulderToHipRatio,
+      waistToHipRatio,
+      bodyType: 'pear'
+    }
+  }
+
+  // Rectangle → similar widths, no waist curve
+  if (
+    shoulderToHipRatio >= 0.85 &&
+    shoulderToHipRatio <= 1.15 &&
+    waistToHipRatio >= 0.75
+  ) {
+    return {
+      shoulderToHipRatio,
+      waistToHipRatio,
+      bodyType: 'rectangle'
+    }
+  }
+
+  // Apple → default fallback
+  return {
+    shoulderToHipRatio,
+    waistToHipRatio,
+    bodyType: 'apple'
+  }
+}

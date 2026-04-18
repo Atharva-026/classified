@@ -18,16 +18,45 @@ export function classifyBodyType(landmarks) {
   const leftHip       = landmarks[23]
   const rightHip      = landmarks[24]
 
+  // Approximate waist using midpoint between shoulders & hips
+  const waistLeft = {
+    x: (landmarks[11].x + landmarks[23].x) / 2,
+    y: (landmarks[11].y + landmarks[23].y) / 2
+  }
+
+  const waistRight = {
+    x: (landmarks[12].x + landmarks[24].x) / 2,
+    y: (landmarks[12].y + landmarks[24].y) / 2
+  }
+
   const shoulderWidth = getLandmarkDistance(leftShoulder, rightShoulder)
   const hipWidth      = getLandmarkDistance(leftHip, rightHip)
-  const ratio         = shoulderWidth / hipWidth
+  const waistWidth    = getLandmarkDistance(waistLeft, waistRight)
 
-  // Use landmarks 25+26 (knees) as proxy for thigh/lower body
-  // to improve pear detection — if hips are wide relative to shoulders
-  // Ratios tuned for real MediaPipe output (normalized 0–1 coordinates)
-  if (ratio >= 0.9 && ratio <= 1.12) return "hourglass"      // shoulders ≈ hips
-  if (ratio > 1.12)                  return "inverted triangle" // shoulders >> hips
-  if (ratio < 0.8)                   return "pear"             // hips >> shoulders
-  if (ratio >= 0.8 && ratio < 0.9)   return "rectangle"       // close but not equal
+  const shoulderHipRatio = shoulderWidth / hipWidth
+  const waistHipRatio    = waistWidth / hipWidth
+
+  // Improved classification logic using waist measurements
+
+  // Hourglass → shoulders ≈ hips, narrow waist
+  if (
+    shoulderHipRatio >= 0.9 &&
+    shoulderHipRatio <= 1.1 &&
+    waistHipRatio < 0.75
+  ) return "hourglass"
+
+  // Inverted triangle → shoulders clearly wider
+  if (shoulderHipRatio > 1.15) return "inverted triangle"
+
+  // Pear → hips clearly wider
+  if (shoulderHipRatio < 0.85) return "pear"
+
+  // Rectangle → similar widths, no waist curve
+  if (
+    shoulderHipRatio >= 0.85 &&
+    shoulderHipRatio <= 1.15 &&
+    waistHipRatio >= 0.75
+  ) return "rectangle"
+
   return "apple"
 }
