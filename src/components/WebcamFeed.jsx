@@ -56,8 +56,9 @@ export default function WebcamFeed({ onBodyTypeDetected }) {
 
         // Get combined measurements using Pose segmentation mask
         let combinedMeasurements = null
+        let segMeasurements = null
         if (results.segmentationMask) {
-          const segMeasurements = extractBodyMeasurementsFromSegmentation(
+          segMeasurements = extractBodyMeasurementsFromSegmentation(
             results.segmentationMask,
             results.poseLandmarks,
             canvas.width,
@@ -68,8 +69,8 @@ export default function WebcamFeed({ onBodyTypeDetected }) {
           }
         }
 
-        // Draw measurement lines
-        drawMeasurementLines(ctx, results.poseLandmarks, canvas.width, canvas.height)
+        // Draw measurement lines with segmentation data
+        drawMeasurementLines(ctx, results.poseLandmarks, canvas.width, canvas.height, segMeasurements)
 
         // Classify with combined measurements or fallback to pose-only
         const detected = classifyBodyType(results.poseLandmarks, combinedMeasurements)
@@ -92,7 +93,7 @@ export default function WebcamFeed({ onBodyTypeDetected }) {
   )
 
   // Draw measurement lines with segmentation data
-  const drawMeasurementLines = (ctx, landmarks, width, height) => {
+  const drawMeasurementLines = (ctx, landmarks, width, height, segMeasurements) => {
     if (!landmarks[11] || !landmarks[12] || !landmarks[23] || !landmarks[24]) return
 
     const leftShoulder = { x: landmarks[11].x * width, y: landmarks[11].y * height }
@@ -126,12 +127,13 @@ export default function WebcamFeed({ onBodyTypeDetected }) {
     ctx.lineTo(waistRight.x, waistRight.y)
     ctx.stroke()
 
-    // BLUE: Hips (from segmentation)
+    // BLUE: Hips (from segmentation) - use actual measured hipY if available
+    const hipY = segMeasurements?.hipY ?? leftHip.y
     ctx.strokeStyle = "#3b82f6"
     ctx.lineWidth = 3
     ctx.beginPath()
-    ctx.moveTo(leftHip.x, leftHip.y)
-    ctx.lineTo(rightHip.x, rightHip.y)
+    ctx.moveTo(leftHip.x, hipY)
+    ctx.lineTo(rightHip.x, hipY)
     ctx.stroke()
 
     // Labels
@@ -141,7 +143,7 @@ export default function WebcamFeed({ onBodyTypeDetected }) {
     ctx.fillStyle = "#eab308"
     ctx.fillText("WAIST", waistLeft.x + 20, waistLeft.y - 10)
     ctx.fillStyle = "#3b82f6"
-    ctx.fillText("HIPS", leftHip.x + 20, leftHip.y - 10)
+    ctx.fillText("HIPS", leftHip.x + 20, hipY - 10)
   }
 
   useEffect(() => {
@@ -155,6 +157,7 @@ export default function WebcamFeed({ onBodyTypeDetected }) {
       modelComplexity: 2,
       smoothLandmarks: true,
       enableSegmentation: true,  // ← ENABLED: Get segmentation mask from Pose
+      smoothSegmentation: true,  // ← Temporal smoothing for stable segmentation
       minDetectionConfidence: 0.65,
       minTrackingConfidence: 0.65,
     })

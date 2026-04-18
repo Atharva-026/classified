@@ -13,22 +13,26 @@
  */
 export function extractBodyMeasurementsFromSegmentation(mask, landmarks, width, height) {
   if (!mask || !landmarks || landmarks.length < 25) {
-    return { shoulderWidth: 0, waistWidth: 0, hipWidth: 0 }
+    return { shoulderWidth: 0, waistWidth: 0, hipWidth: 0, hipY: 0 }
   }
 
   // Get shoulder and hip Y coordinates (normalized → pixel coordinates)
   const shoulderY = Math.round(landmarks[11].y * height) // Left shoulder
-  const hipY = Math.round(landmarks[23].y * height) // Left hip
+  const hipJointY = Math.round(landmarks[23].y * height) // Left hip
   
   // Calculate waist row as midpoint between shoulders and hips
-  const waistY = Math.round((shoulderY + hipY) / 2)
+  const waistY = Math.round((shoulderY + hipJointY) / 2)
 
   // Extract widths from mask at each row
   const shoulderWidth = getWidthAtRow(mask, shoulderY, width, height)
   const waistWidth = getWidthAtRow(mask, waistY, width, height)
-  const hipWidth = getWidthAtRow(mask, hipY, width, height)
+  
+  // Get real hip width using improved measurement
+  const hipResult = getRealHipWidth(mask, landmarks, width, height)
+  const hipWidth = hipResult.hipWidth
+  const hipY = hipResult.hipY
 
-  return { shoulderWidth, waistWidth, hipWidth }
+  return { shoulderWidth, waistWidth, hipWidth, hipY }
 }
 
 /**
@@ -67,6 +71,40 @@ function getWidthAtRow(mask, row, width, height) {
   }
 
   return rightmost - leftmost
+}
+
+/**
+ * Get real hip width by finding the maximum width in the hip region
+ * Scans from 3% to 18% below hip joints to find the widest part of hip silhouette
+ * Returns both the width and the Y coordinate where max width was found
+ * @param {Uint8ClampedArray} mask - Segmentation mask
+ * @param {Array} landmarks - Pose landmarks
+ * @param {number} width - Frame width in pixels
+ * @param {number} height - Frame height in pixels
+ * @returns {Object} { hipWidth: number, hipY: number } - max width and its Y coordinate
+ */
+function getRealHipWidth(mask, landmarks, width, height) {
+  // Get hip joint Y coordinate (average of left and right hips)
+  const hipJointY = ((landmarks[23].y + landmarks[24].y) / 2) * height
+
+  // Define scan range: 0% to 25% below hip joints to capture full widest hip
+  const startY = Math.round(hipJointY)
+  const endY = Math.round(hipJointY + height * 0.25)
+
+  let maxWidth = 0
+  let bestY = hipJointY
+
+  // Scan all rows in the hip region and find the maximum width
+  for (let y = startY; y <= endY; y++) {
+    const w = getWidthAtRow(mask, y, width, height)
+
+    if (w > maxWidth) {
+      maxWidth = w
+      bestY = y
+    }
+  }
+
+  return { hipWidth: maxWidth, hipY: bestY }
 }
 
 /**
