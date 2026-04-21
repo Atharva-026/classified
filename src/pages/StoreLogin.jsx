@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Link } from "react-router-dom"
+import { apiUrl } from "../utils/api"
 
 export default function StoreLogin() {
   const [username, setUsername] = useState("")
@@ -13,7 +14,7 @@ export default function StoreLogin() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch("https://classified-stylesense-ai.onrender.com/api/staff/login", {
+      const res = await fetch(apiUrl("/api/staff/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password })

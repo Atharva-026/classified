@@ -1,3 +1,5 @@
+import { apiUrl } from "./api"
+
 export async function getFashionSuggestions({
   bodyType,
   occasion,
@@ -6,12 +8,12 @@ export async function getFashionSuggestions({
 }) {
   // Step 1: Fetch matching inventory from backend
   const inventoryRes = await fetch(
-    `https://classified-stylesense-ai.onrender.com/api/inventory?body_type=${bodyType}&occasion=${occasion}`
+    apiUrl(`/api/inventory?body_type=${encodeURIComponent(bodyType)}&occasion=${encodeURIComponent(occasion)}`)
   )
   const inventory = await inventoryRes.json()
 
   // Step 2: Send to AI with real inventory context
-  const response = await fetch("https://classified-stylesense-ai.onrender.com/api/fashion", {
+  const response = await fetch(apiUrl("/api/fashion"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -29,7 +31,7 @@ Style preference: ${gender}
 Available store inventory (ONLY suggest from these):
 ${inventory?.length > 0 
   ? inventory.map((item, i) =>
-      `${i + 1}. ID: "${item.id}" | Name: "${item.name}" | Category: ${item.category} | Colors: ${item.colors.join(", ")} | Price: $${item.price} | Description: ${item.description}`
+      `${i + 1}. ID: "${item._id || item.id}" | Name: "${item.name}" | Category: ${item.category} | Colors: ${item.colors.join(", ")} | Price: $${item.price} | Description: ${item.description}`
     ).join("\n")
   : "No inventory available - give general advice"
 }
@@ -62,7 +64,7 @@ IMPORTANT: The field must be called exactly "stylingTips" not "styling_tips" or 
   const parsed = JSON.parse(clean)
 
   // Step 3: Attach full product data to recommendations
-  parsed.recommendedProducts = parsed.recommendedProducts
+  parsed.recommendedProducts = (parsed.recommendedProducts || [])
     .map(rec => ({
       ...rec,
       ...inventory.find(item => (item._id || item.id) === rec.id)

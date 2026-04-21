@@ -2,108 +2,19 @@ import { useEffect, useRef, useState, useCallback } from "react"
 import { Pose, POSE_CONNECTIONS } from "@mediapipe/pose"
 import { drawConnectors, drawLandmarks } from "@mediapipe/drawing_utils"
 import { classifyBodyType } from "../utils/bodyTypeClassifier"
-<<<<<<< HEAD
 import { extractBodyMeasurementsFromSegmentation, combineMeasurements } from "../utils/segmentationProcessor"
-=======
->>>>>>> origin/main
 
 export default function WebcamFeed({ onBodyTypeDetected }) {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const poseRef = useRef(null)
-<<<<<<< HEAD
   const frameRef = useRef(null)
 
   const [status, setStatus] = useState("Starting camera...")
   const [isLive, setIsLive] = useState(false)
   const [detected, setDetected] = useState(false)
-  const [bodyType, setBodyType] = useState(null)
-  const [showDebug, setShowDebug] = useState(true) // Debug visualization
 
-  // Main pose detection callback
-  const onPoseResults = useCallback(
-    (results) => {
-      const video = videoRef.current
-      const canvas = canvasRef.current
-
-      if (!video || !canvas) return
-
-      const ctx = canvas.getContext("2d")
-      canvas.width = video.videoWidth
-      canvas.height = video.videoHeight
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-      if (results.poseLandmarks && results.poseLandmarks.length > 0) {
-        setDetected(true)
-
-        // Scale landmarks for visualization
-        const scaledLandmarks = results.poseLandmarks.map(landmark => ({
-          x: landmark.x * canvas.width,
-          y: landmark.y * canvas.height,
-          z: landmark.z || 0,
-          visibility: landmark.visibility || 0,
-        }))
-
-        // Draw skeleton
-        drawConnectors(ctx, scaledLandmarks, POSE_CONNECTIONS, {
-          color: "#a855f7",
-          lineWidth: 2,
-        })
-
-        // Draw joints
-        drawLandmarks(ctx, scaledLandmarks, {
-          color: "#f0abfc",
-          radius: 4,
-          lineWidth: 1,
-        })
-
-        // Get combined measurements using Pose segmentation mask
-        let combinedMeasurements = null
-        let segMeasurements = null
-        
-        // Only process segmentation if mask is available (prevent blocking)
-        if (results.segmentationMask) {
-          try {
-            segMeasurements = extractBodyMeasurementsFromSegmentation(
-              results.segmentationMask,
-              results.poseLandmarks,
-              canvas.width,
-              canvas.height
-            )
-            if (segMeasurements && segMeasurements.shoulderWidth > 0) {
-              combinedMeasurements = combineMeasurements(results.poseLandmarks, segMeasurements, canvas.width)
-            }
-          } catch (e) {
-            console.warn("Segmentation processing error:", e)
-          }
-        }
-
-        // Draw measurement lines with segmentation data
-        drawMeasurementLines(ctx, results.poseLandmarks, canvas.width, canvas.height, segMeasurements)
-
-        // Classify with combined measurements or fallback to pose-only
-        const detected = classifyBodyType(results.poseLandmarks, combinedMeasurements)
-
-        if (detected) {
-          onBodyTypeDetected(detected)
-          setBodyType(detected)
-          setStatus(`✅ ${detected.toUpperCase()}`)
-        } else {
-          setStatus("Adjusting position...")
-        }
-      } else {
-        setDetected(false)
-        onBodyTypeDetected(null)
-        setBodyType(null)
-        setStatus("Move back so full body is visible")
-      }
-    },
-    [onBodyTypeDetected]
-  )
-
-  // Draw measurement lines with segmentation data
-  const drawMeasurementLines = (ctx, landmarks, width, height, segMeasurements) => {
+  const drawMeasurementLines = useCallback((ctx, landmarks, width, height) => {
     if (!landmarks[11] || !landmarks[12] || !landmarks[23] || !landmarks[24]) return
 
     const leftShoulder = { x: landmarks[11].x * width, y: landmarks[11].y * height }
@@ -111,9 +22,6 @@ export default function WebcamFeed({ onBodyTypeDetected }) {
     const leftHip = { x: landmarks[23].x * width, y: landmarks[23].y * height }
     const rightHip = { x: landmarks[24].x * width, y: landmarks[24].y * height }
 
-    if (!showDebug) return
-
-    // RED: Shoulders (from segmentation)
     ctx.strokeStyle = "#ef4444"
     ctx.lineWidth = 3
     ctx.beginPath()
@@ -121,7 +29,6 @@ export default function WebcamFeed({ onBodyTypeDetected }) {
     ctx.lineTo(rightShoulder.x, rightShoulder.y)
     ctx.stroke()
 
-    // YELLOW: Waist (from segmentation)
     const waistLeft = {
       x: leftShoulder.x + (leftHip.x - leftShoulder.x) * 0.65,
       y: leftShoulder.y + (leftHip.y - leftShoulder.y) * 0.65,
@@ -130,104 +37,101 @@ export default function WebcamFeed({ onBodyTypeDetected }) {
       x: rightShoulder.x + (rightHip.x - rightShoulder.x) * 0.65,
       y: rightShoulder.y + (rightHip.y - rightShoulder.y) * 0.65,
     }
+
     ctx.strokeStyle = "#eab308"
-    ctx.lineWidth = 3
     ctx.beginPath()
     ctx.moveTo(waistLeft.x, waistLeft.y)
     ctx.lineTo(waistRight.x, waistRight.y)
     ctx.stroke()
 
-    // BLUE: Hips (from segmentation) - expanded hip width visualization
     const hipCenterX = (leftHip.x + rightHip.x) / 2
-    const rawHipY = (leftHip.y + rightHip.y) / 2
-
-    const hipYOffset = height * 0.035
-    const hipY = rawHipY + hipYOffset
-
-    const rawHipWidth = Math.abs(rightHip.x - leftHip.x)
-    const expandedHipWidth = rawHipWidth * 1.88
-
-    const startX = hipCenterX - expandedHipWidth / 2
-    const endX = hipCenterX + expandedHipWidth / 2
+    const hipY = ((leftHip.y + rightHip.y) / 2) + height * 0.035
+    const expandedHipWidth = Math.abs(rightHip.x - leftHip.x) * 1.88
 
     ctx.strokeStyle = "#3b82f6"
-    ctx.lineWidth = 3
     ctx.beginPath()
-    ctx.moveTo(startX, hipY)
-    ctx.lineTo(endX, hipY)
+    ctx.moveTo(hipCenterX - expandedHipWidth / 2, hipY)
+    ctx.lineTo(hipCenterX + expandedHipWidth / 2, hipY)
     ctx.stroke()
+  }, [])
 
-    // Labels
-    ctx.font = "bold 12px Arial"
-    ctx.fillStyle = "#ef4444"
-    ctx.fillText("SHOULDERS", leftShoulder.x + 20, leftShoulder.y - 10)
-    ctx.fillStyle = "#eab308"
-    ctx.fillText("WAIST", waistLeft.x + 20, waistLeft.y - 10)
-    ctx.fillStyle = "#3b82f6"
-    ctx.fillText("HIPS", hipCenterX + 20, hipY - 10)
-  }
-
-  useEffect(() => {
-    // Initialize Pose with native segmentation
-=======
-  const animFrameRef = useRef(null)
-  const [status, setStatus] = useState("Starting camera...")
-  const [isActive, setIsActive] = useState(false)
-  const [landmarks, setLandmarks] = useState(null)
-
-  const onResults = useCallback((results) => {
-    const canvas = canvasRef.current
+  const onPoseResults = useCallback((results) => {
     const video = videoRef.current
-    if (!canvas || !video) return
+    const canvas = canvasRef.current
+    if (!video || !canvas) return
 
     const ctx = canvas.getContext("2d")
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
-
-    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    if (results.poseLandmarks) {
-      // Draw skeleton connectors
-      drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, {
+    if (results.poseLandmarks?.length) {
+      setDetected(true)
+
+      const scaledLandmarks = results.poseLandmarks.map(landmark => ({
+        x: landmark.x * canvas.width,
+        y: landmark.y * canvas.height,
+        z: landmark.z || 0,
+        visibility: landmark.visibility || 0,
+      }))
+
+      drawConnectors(ctx, scaledLandmarks, POSE_CONNECTIONS, {
         color: "#a855f7",
         lineWidth: 2,
       })
 
-      // Draw landmark dots
-      drawLandmarks(ctx, results.poseLandmarks, {
+      drawLandmarks(ctx, scaledLandmarks, {
         color: "#f0abfc",
-        lineWidth: 1,
         radius: 4,
+        lineWidth: 1,
       })
 
-      setLandmarks(results.poseLandmarks)
+      let combinedMeasurements = null
+      if (results.segmentationMask) {
+        try {
+          const segMeasurements = extractBodyMeasurementsFromSegmentation(
+            results.segmentationMask,
+            results.poseLandmarks,
+            canvas.width,
+            canvas.height
+          )
 
-      // Classify body type
-      const bodyType = classifyBodyType(results.poseLandmarks)
+          if (segMeasurements.shoulderWidth > 0) {
+            combinedMeasurements = combineMeasurements(results.poseLandmarks, segMeasurements, canvas.width)
+          }
+        } catch (error) {
+          console.warn("Segmentation processing error:", error)
+        }
+      }
+
+      drawMeasurementLines(ctx, results.poseLandmarks, canvas.width, canvas.height)
+
+      const bodyType = classifyBodyType(results.poseLandmarks, combinedMeasurements)
       if (bodyType) {
         onBodyTypeDetected(bodyType)
-        setStatus(`Body type detected: ${bodyType}`)
+        setStatus(`Detected: ${bodyType}`)
+      } else {
+        onBodyTypeDetected(null)
+        setStatus("Adjusting position...")
       }
     } else {
-      setStatus("Stand back so your full body is visible")
+      setDetected(false)
       onBodyTypeDetected(null)
+      setStatus("Move back so full body is visible")
     }
-  }, [onBodyTypeDetected])
+  }, [drawMeasurementLines, onBodyTypeDetected])
 
   useEffect(() => {
->>>>>>> origin/main
+    const videoElement = videoRef.current
     const pose = new Pose({
-      locateFile: (file) =>
-        `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
+      locateFile: file => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
     })
 
     pose.setOptions({
-<<<<<<< HEAD
       modelComplexity: 2,
       smoothLandmarks: true,
-      enableSegmentation: true,  // ← ENABLED: Get segmentation mask from Pose
-      smoothSegmentation: true,  // ← Temporal smoothing for stable segmentation
+      enableSegmentation: true,
+      smoothSegmentation: true,
       minDetectionConfidence: 0.65,
       minTrackingConfidence: 0.65,
     })
@@ -235,7 +139,6 @@ export default function WebcamFeed({ onBodyTypeDetected }) {
     pose.onResults(onPoseResults)
     poseRef.current = pose
 
-    // Start camera stream
     const startCamera = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -247,23 +150,22 @@ export default function WebcamFeed({ onBodyTypeDetected }) {
           audio: false,
         })
 
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-          await videoRef.current.play()
+        if (!videoRef.current) return
 
-          setIsLive(true)
-          setStatus("Stand 5-6 feet away for full body scan")
+        videoRef.current.srcObject = stream
+        await videoRef.current.play()
 
-          // Start detection loop
-          const detect = async () => {
-            if (videoRef.current && videoRef.current.readyState === 4) {
-              await poseRef.current.send({ image: videoRef.current })
-            }
-            frameRef.current = requestAnimationFrame(detect)
+        setIsLive(true)
+        setStatus("Stand 5-6 feet away for full body scan")
+
+        const detect = async () => {
+          if (videoRef.current?.readyState === 4 && poseRef.current) {
+            await poseRef.current.send({ image: videoRef.current })
           }
-
-          detect()
+          frameRef.current = requestAnimationFrame(detect)
         }
+
+        detect()
       } catch (error) {
         console.error(error)
         setStatus("Camera permission denied")
@@ -273,84 +175,21 @@ export default function WebcamFeed({ onBodyTypeDetected }) {
     startCamera()
 
     return () => {
-      if (frameRef.current) {
-        cancelAnimationFrame(frameRef.current)
-      }
-
-      if (videoRef.current?.srcObject) {
-        videoRef.current.srcObject
-          .getTracks()
-          .forEach((track) => track.stop())
+      if (frameRef.current) cancelAnimationFrame(frameRef.current)
+      if (videoElement?.srcObject) {
+        videoElement.srcObject.getTracks().forEach(track => track.stop())
       }
     }
   }, [onPoseResults])
 
   return (
     <div className="relative w-full max-w-3xl mx-auto aspect-4/3 bg-gray-900 rounded-2xl overflow-hidden border border-gray-800 shadow-2xl">
-      {/* Status */}
       <div className="absolute top-3 left-3 right-3 z-20">
         <div className="bg-black/60 backdrop-blur-md rounded-lg px-4 py-2 text-xs text-gray-200 text-center">
-=======
-      modelComplexity: 1,
-      smoothLandmarks: true,
-      enableSegmentation: false,
-      minDetectionConfidence: 0.6,
-      minTrackingConfidence: 0.6,
-    })
-
-    pose.onResults(onResults)
-    poseRef.current = pose
-
-    const startCamera = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480, facingMode: "user" },
-        })
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream
-          await videoRef.current.play()
-          setIsActive(true)
-          setStatus("Analyzing your posture...")
-          detectLoop()
-        }
-      } catch {
-        setStatus("Camera access denied. Please allow camera permissions.")
-      }
-    }
-
-    const detectLoop = () => {
-      const detect = async () => {
-        if (videoRef.current && poseRef.current &&
-            videoRef.current.readyState === 4) {
-          await poseRef.current.send({ image: videoRef.current })
-        }
-        animFrameRef.current = requestAnimationFrame(detect)
-      }
-      detect()
-    }
-
-    startCamera()
-
-    return () => {
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current)
-      if (videoRef.current?.srcObject) {
-        videoRef.current.srcObject.getTracks().forEach((t) => t.stop())
-      }
-    }
-  }, [onResults])
-
-  return (
-    <div className="relative bg-gray-900 rounded-2xl overflow-hidden border border-gray-800">
-      {/* Status bar */}
-      <div className="absolute top-3 left-3 right-3 z-10">
-        <div className="bg-black/60 backdrop-blur rounded-lg px-3 py-1.5 text-xs text-gray-300">
->>>>>>> origin/main
           {status}
         </div>
       </div>
 
-<<<<<<< HEAD
-      {/* Webcam */}
       <video
         ref={videoRef}
         playsInline
@@ -359,14 +198,12 @@ export default function WebcamFeed({ onBodyTypeDetected }) {
         style={{ transform: "scaleX(-1)" }}
       />
 
-      {/* Pose Overlay */}
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full pointer-events-none"
         style={{ transform: "scaleX(-1)" }}
       />
 
-      {/* Live Badge */}
       {isLive && (
         <div className="absolute bottom-3 right-3 z-20 flex items-center gap-2 bg-black/60 px-3 py-1 rounded-full">
           <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
@@ -374,42 +211,9 @@ export default function WebcamFeed({ onBodyTypeDetected }) {
         </div>
       )}
 
-      {/* Detection Badge */}
       {detected && (
         <div className="absolute bottom-3 left-3 z-20 bg-purple-600/80 backdrop-blur-md px-3 py-1 rounded-full">
-          <span className="text-xs text-white font-medium">
-            Body Detected
-          </span>
-=======
-      {/* Video — hidden, used as source for MediaPipe */}
-      <video
-        ref={videoRef}
-        className="w-full"
-        style={{ transform: "scaleX(-1)" }}
-        playsInline
-        muted
-      />
-
-      {/* Canvas — draws skeleton on top */}
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 w-full h-full"
-        style={{ transform: "scaleX(-1)" }}
-      />
-
-      {/* Active indicator */}
-      {isActive && (
-        <div className="absolute bottom-3 right-3 flex items-center gap-1.5 bg-black/60 rounded-full px-2 py-1">
-          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-          <span className="text-xs text-green-400">LIVE</span>
-        </div>
-      )}
-
-      {/* Body type badge */}
-      {landmarks && (
-        <div className="absolute bottom-3 left-3 bg-purple-600/80 backdrop-blur rounded-full px-3 py-1">
-          <span className="text-xs font-medium">🦴 Landmarks detected</span>
->>>>>>> origin/main
+          <span className="text-xs text-white font-medium">Body Detected</span>
         </div>
       )}
     </div>
