@@ -129,6 +129,9 @@ function getRealHipWidth(mask, landmarks, width, height) {
  * @returns {number} Width in pixels
  */
 function getLandmarkWidth(landmarks, type, width) {
+  // Hip expansion factor to match silhouette width (not just joint distance)
+  const HIP_EXPANSION_FACTOR = 1.88
+  
   if (type === 'shoulder') {
     // Distance between left and right shoulders (landmarks 11 and 12)
     const left = landmarks[11]?.x ?? 0
@@ -144,7 +147,9 @@ function getLandmarkWidth(landmarks, type, width) {
     // Distance between left and right hips (landmarks 23 and 24)
     const left = landmarks[23]?.x ?? 0
     const right = landmarks[24]?.x ?? 0
-    return Math.abs(right - left) * width
+    const rawHipWidth = Math.abs(right - left) * width
+    // Apply expansion factor to account for actual body silhouette width
+    return rawHipWidth * HIP_EXPANSION_FACTOR
   }
   return 0
 }
@@ -204,7 +209,7 @@ export function calculateBodyTypeFromMeasurements(measurements) {
     return { shoulderToHipRatio: 0, waistToHipRatio: 0, bodyType: 'unknown' }
   }
 
-  const shoulderToHipRatio = shoulderWidth / hipWidth
+  const shoulderToHipRatio = (shoulderWidth * 0.1) / (hipWidth * 1.75)
   const waistToHipRatio = waistWidth / hipWidth
 
   // Improved classification logic using waist measurements
@@ -223,7 +228,7 @@ export function calculateBodyTypeFromMeasurements(measurements) {
   }
 
   // Inverted triangle → shoulders clearly wider
-  if (shoulderToHipRatio > 1.15) {
+  if (shoulderToHipRatio > 1.80) {
     return {
       shoulderToHipRatio,
       waistToHipRatio,
