@@ -38,9 +38,10 @@ export default function SuggestionPanel({ bodyType, occasion, season, gender }) 
   const [tab, setTab] = useState("products") // "products" | "tips"
   const debounceRef = useRef(null)
   const lastFetchRef = useRef("")
+  const activeSuggestions = bodyType ? suggestions : null
 
   useEffect(() => {
-    if (!bodyType) { setSuggestions(null); return }
+    if (!bodyType) return
 
     const key = `${bodyType}-${occasion}-${season}-${gender}`
     if (key === lastFetchRef.current) return
@@ -130,7 +131,7 @@ export default function SuggestionPanel({ bodyType, occasion, season, gender }) 
       )}
 
       {/* Results */}
-      {suggestions && !loading && (
+      {activeSuggestions && !loading && (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
 
           {/* Body type card */}
@@ -149,7 +150,7 @@ export default function SuggestionPanel({ bodyType, occasion, season, gender }) 
             </div>
             <p style={{ fontSize: "12px", color: "#666", marginTop: "10px",
               lineHeight: 1.6, borderTop: "1px solid #1a1a1a", paddingTop: "10px" }}>
-              {suggestions.bodyTypeDescription}
+              {activeSuggestions.bodyTypeDescription}
             </p>
           </Card>
 
@@ -157,7 +158,7 @@ export default function SuggestionPanel({ bodyType, occasion, season, gender }) 
           <Card delay={0.1}>
             <Label>✦ Curated Outfit</Label>
             <p style={{ fontSize: "13px", color: "#c8c0b4", lineHeight: 1.7, margin: 0 }}>
-              {suggestions.outfitIdea}
+              {activeSuggestions.outfitIdea}
             </p>
           </Card>
 
@@ -172,7 +173,7 @@ export default function SuggestionPanel({ bodyType, occasion, season, gender }) 
                 color: tab === t ? "#d4af5c" : "#444",
                 transition: "all 0.2s"
               }}>
-                {t === "products" ? `Shop (${suggestions.recommendedProducts?.length || 0})` : "Style Tips"}
+                {t === "products" ? `Shop (${activeSuggestions.recommendedProducts?.length || 0})` : "Style Tips"}
               </button>
             ))}
           </div>
@@ -180,9 +181,9 @@ export default function SuggestionPanel({ bodyType, occasion, season, gender }) 
           {/* Products tab */}
           {tab === "products" && (
             <div key="products-tab" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              {suggestions.recommendedProducts?.length > 0 ? (
-                suggestions.recommendedProducts.map((product, i) => (
-                  <ProductCard key={product.id} item={product} reason={product.reason} delay={i * 0.1} />
+              {activeSuggestions.recommendedProducts?.length > 0 ? (
+                activeSuggestions.recommendedProducts.map((product, i) => (
+                  <ProductCard key={product._id || product.id || `${product.name}-${i}`} item={product} reason={product.reason} delay={i * 0.1} />
                 ))
               ) : (
                 <div style={{ textAlign: "center", padding: "32px", color: "#333" }}>
@@ -199,8 +200,8 @@ export default function SuggestionPanel({ bodyType, occasion, season, gender }) 
               <Card delay={0}>
                 <Label>✦ Styling Tips</Label>
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  {suggestions.stylingTips?.length > 0
-                    ? suggestions.stylingTips.map((tip, i) => (
+                  {activeSuggestions.stylingTips?.length > 0
+                    ? activeSuggestions.stylingTips.map((tip, i) => (
                         <p key={i} style={{
                           fontSize: "12px", color: "#888", margin: 0,
                           lineHeight: 1.6, paddingLeft: "10px",
@@ -216,8 +217,8 @@ export default function SuggestionPanel({ bodyType, occasion, season, gender }) 
               <Card delay={0.1}>
                 <Label>⊘ Avoid</Label>
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  {suggestions.avoid?.length > 0
-                    ? suggestions.avoid.map((a, i) => (
+                  {activeSuggestions.avoid?.length > 0
+                    ? activeSuggestions.avoid.map((a, i) => (
                         <p key={i} style={{
                           fontSize: "11px", color: "#553333", margin: 0,
                           paddingLeft: "8px", borderLeft: "1px solid #3a1a1a", lineHeight: 1.5

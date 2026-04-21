@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { apiUrl } from "../utils/api"
 
 const BODY_TYPES = ["hourglass", "pear", "apple", "rectangle", "inverted triangle"]
 const OCCASIONS = ["casual", "formal", "party", "work", "date"]
@@ -43,7 +44,7 @@ export default function AddItemModal({ token, onClose, onAdded }) {
       if (imageFile) fd.append("image", imageFile)
       else if (form.image_url) fd.append("image_url", form.image_url)
 
-      const res = await fetch("https://classified-stylesense-ai.onrender.com/api/inventory", {
+      const res = await fetch(apiUrl("/api/inventory"), {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: fd

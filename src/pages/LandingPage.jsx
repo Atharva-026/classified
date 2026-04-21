@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from "react"
-import { useNavigate, Link } from "react-router-dom" // Added Link import
+import { useNavigate, Link } from "react-router-dom"
+import backgroundImage1 from "../assets/background_image1.jpeg"
+import backgroundImage2 from "../assets/background_image2.jpeg"
+import backgroundImage3 from "../assets/background_image3.jpeg"
+import backgroundImage4 from "../assets/background_image4.jpeg"
 
 export default function LandingPage() {
   const navigate = useNavigate()
@@ -69,10 +73,10 @@ export default function LandingPage() {
   const mouseOffsetY = (smoothMouse.y - wH / 2) * 0.01
 
   const bgImages = [
-    "/src/assets/background_image1.jpeg",
-    "/src/assets/background_image2.jpeg",
-    "/src/assets/background_image3.jpeg",
-    "/src/assets/background_image4.jpeg",
+    backgroundImage1,
+    backgroundImage2,
+    backgroundImage3,
+    backgroundImage4,
   ]
 
   return (
@@ -247,7 +251,7 @@ export default function LandingPage() {
         <div style={{
           position: "absolute", top: "-5%", right: "-5%", zIndex: 1,
           width: "45vw", height: "45vw", maxWidth: "600px",
-          backgroundImage: `url(/src/assets/background_image2.jpeg)`,
+          backgroundImage: `url(${backgroundImage2})`,
           backgroundSize: "contain", backgroundRepeat: "no-repeat",
           backgroundPosition: "center",
           opacity: 0.25,
@@ -262,7 +266,7 @@ export default function LandingPage() {
         <div style={{
           position: "absolute", bottom: "-5%", left: "-5%", zIndex: 1,
           width: "35vw", height: "35vw", maxWidth: "500px",
-          backgroundImage: `url(/src/assets/background_image4.jpeg)`,
+          backgroundImage: `url(${backgroundImage4})`,
           backgroundSize: "contain", backgroundRepeat: "no-repeat",
           backgroundPosition: "center",
           opacity: 0.18,
@@ -276,7 +280,7 @@ export default function LandingPage() {
         <div style={{
           position: "absolute", top: "20%", left: "5%", zIndex: 1,
           width: "25vw", height: "25vw", maxWidth: "380px",
-          backgroundImage: `url(/src/assets/background_image3.jpeg)`,
+          backgroundImage: `url(${backgroundImage3})`,
           backgroundSize: "contain", backgroundRepeat: "no-repeat",
           backgroundPosition: "center",
           opacity: 0.06,
@@ -402,7 +406,7 @@ export default function LandingPage() {
         <div style={{
           position: "absolute", top: "10%", right: "-8%", zIndex: 0,
           width: "40vw", height: "40vw", maxWidth: "500px",
-          backgroundImage: "url(/src/assets/background_image1.jpeg)",
+          backgroundImage: `url(${backgroundImage1})`,
           backgroundSize: "contain", backgroundRepeat: "no-repeat",
           backgroundPosition: "center",
           opacity: 0.05,
@@ -474,7 +478,7 @@ export default function LandingPage() {
         <div style={{
           position: "absolute", top: "-20%", left: "-10%", zIndex: 0,
           width: "55vw", height: "55vw",
-          backgroundImage: "url(/src/assets/background_image4.jpeg)",
+          backgroundImage: `url(${backgroundImage4})`,
           backgroundSize: "contain", backgroundRepeat: "no-repeat",
           backgroundPosition: "center",
           opacity: 0.04,
@@ -490,7 +494,7 @@ export default function LandingPage() {
               <div style={{
                 position: "absolute", top: "-20%", right: "-10%",
                 width: "300px", height: "300px",
-                backgroundImage: "url(/src/assets/background_image3.jpeg)",
+                backgroundImage: `url(${backgroundImage3})`,
                 backgroundSize: "contain", backgroundRepeat: "no-repeat",
                 opacity: 0.07, pointerEvents: "none",
                 transform: `translateY(${(scrollY - wH * 1.5) * 0.1}px)`,
@@ -558,7 +562,7 @@ export default function LandingPage() {
         <div style={{
           position: "absolute", bottom: "0%", right: "-5%", zIndex: 0,
           width: "35vw", height: "35vw",
-          backgroundImage: "url(/src/assets/background_image2.jpeg)",
+          backgroundImage: `url(${backgroundImage2})`,
           backgroundSize: "contain", backgroundRepeat: "no-repeat",
           backgroundPosition: "center",
           opacity: 0.05,
@@ -616,7 +620,7 @@ export default function LandingPage() {
         {/* Full-width subtle parallax bg */}
         <div style={{
           position: "absolute", inset: 0, zIndex: 0,
-          backgroundImage: "url(/src/assets/background_image1.jpeg)",
+          backgroundImage: `url(${backgroundImage1})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
           opacity: 0.04,

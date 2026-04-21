@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useNavigate, Link } from "react-router-dom"
+import { apiUrl } from "../utils/api"
 
 export default function StoreRegister() {
   const [form, setForm] = useState({ username: "", password: "", confirmPassword: "", store_name: "" })
@@ -21,7 +22,7 @@ export default function StoreRegister() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch("https://classified-stylesense-ai.onrender.com/api/staff/register", {
+      const res = await fetch(apiUrl("/api/staff/register"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

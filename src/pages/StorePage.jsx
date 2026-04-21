@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import AddItemModal from "../components/AddItemModal"
+import { apiUrl } from "../utils/api"
 
 export default function StorePage() {
   const [inventory, setInventory] = useState([])
@@ -10,22 +11,30 @@ export default function StorePage() {
   const token = localStorage.getItem("staff_token")
   const storeName = localStorage.getItem("store_name")
 
-  useEffect(() => { fetchInventory() }, [])
-
-  const fetchInventory = async () => {
+  const fetchInventory = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch("https://classified-stylesense-ai.onrender.com/api/inventory")
+      const res = await fetch(apiUrl("/api/staff/inventory"), {
+        headers: { Authorization: `Bearer ${token}` }
+      })
       const data = await res.json()
       setInventory(data)
     } finally {
       setLoading(false)
     }
-  }
+  }, [token])
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchInventory()
+    }, 0)
+
+    return () => clearTimeout(timeoutId)
+  }, [fetchInventory])
 
   const handleDelete = async (id) => {
     if (!confirm("Delete this item?")) return
-    await fetch(`https://classified-stylesense-ai.onrender.com/api/inventory/${id}`, {
+    await fetch(apiUrl(`/api/inventory/${id}`), {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` }
     })
@@ -33,7 +42,7 @@ export default function StorePage() {
   }
 
   const handleToggleStock = async (id, current) => {
-    await fetch(`https://classified-stylesense-ai.onrender.com/api/inventory/${id}/stock`, {
+    await fetch(apiUrl(`/api/inventory/${id}/stock`), {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ in_stock: !current })
@@ -121,7 +130,7 @@ export default function StorePage() {
             gap: "16px"
           }}>
             {inventory.map(item => (
-              <div key={item.id} style={{
+              <div key={item._id || item.id} style={{
                 background: "#0f0f0f", border: `1px solid ${item.in_stock ? "#1a1a1a" : "#2a1a1a"}`,
                 borderRadius: "12px", overflow: "hidden",
                 opacity: item.in_stock ? 1 : 0.6
@@ -161,7 +170,7 @@ export default function StorePage() {
                   {/* Actions */}
                   <div style={{ display: "flex", gap: "8px" }}>
                     <button
-                      onClick={() => handleToggleStock(item.id, item.in_stock)}
+                      onClick={() => handleToggleStock(item._id || item.id, item.in_stock)}
                       style={{
                         flex: 1, padding: "6px", fontSize: "10px",
                         letterSpacing: "0.1em", textTransform: "uppercase",
@@ -175,7 +184,7 @@ export default function StorePage() {
                       {item.in_stock ? "Mark Out" : "Mark In"}
                     </button>
                     <button
-                      onClick={() => handleDelete(item.id)}
+                      onClick={() => handleDelete(item._id || item.id)}
                       style={{
                         padding: "6px 12px", fontSize: "10px",
                         background: "transparent", border: "1px solid #2a1a1a",
