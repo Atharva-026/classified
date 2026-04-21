@@ -48,7 +48,11 @@ No generic catalogues. No quiz-based approximations. Real body intelligence matc
 ### Store Portal (`/store`)
 - **Store registration** — any store can sign up and list their inventory
 - **Full inventory management** — add, edit, delete, toggle stock status
+<<<<<<< HEAD
 - **Image upload** — product photos stored on Cloudinary
+=======
+- **Image upload** — product photos stored on Supabase Storage
+>>>>>>> origin/main
 - **Body type tagging** — staff tag which body types each item flatters
 - **Multi-store support** — each store has isolated inventory
 - **JWT authentication** — secure login with bcrypt password hashing
@@ -66,7 +70,11 @@ No generic catalogues. No quiz-based approximations. Real body intelligence matc
 | Feature | StyleSense AI | Generic Fashion Apps | Quiz-Based Style Apps |
 |---|---|---|---|
 | Real-time body detection | ✅ Webcam + MediaPipe | ❌ None | ❌ Static quiz |
+<<<<<<< HEAD
 | Actual store inventory | ✅ Live MongoDB | ❌ Global marketplace | ❌ Affiliate links |
+=======
+| Actual store inventory | ✅ Live Supabase DB | ❌ Global marketplace | ❌ Affiliate links |
+>>>>>>> origin/main
 | Body type intelligence | ✅ 33 landmark analysis | ❌ Size filters only | ⚠️ Approximation |
 | Store attribution | ✅ Shows store per item | ❌ Anonymous | ❌ N/A |
 | Two-sided platform | ✅ Customer + Store portals | ❌ Customer only | ❌ Customer only |
@@ -91,8 +99,13 @@ No generic catalogues. No quiz-based approximations. Real body intelligence matc
 - **Groq SDK** — LLaMA 3.3 70B inference at 14,400 requests/day free
 
 ### Database & Storage
+<<<<<<< HEAD
 - **MongoDB** — inventory and staff data
 - **Cloudinary** — product image hosting with public CDN URLs
+=======
+- **Supabase PostgreSQL** — inventory and staff data
+- **Supabase Storage** — product image hosting with public CDN URLs
+>>>>>>> origin/main
 
 ### AI & Vision
 - **Vision Agents SDK by Stream** — real-time video infrastructure, <30ms latency
@@ -124,7 +137,11 @@ stylesense-ai/
 │   ├── utils/
 │   │   ├── bodyTypeClassifier.js  # Shoulder/hip ratio classification
 │   │   ├── claudeService.js       # Groq API integration
+<<<<<<< HEAD
 │   │   └── mongodb.js            # Database client (not used - backend handles DB)
+=======
+│   │   └── supabase.js            # Supabase client
+>>>>>>> origin/main
 │   ├── assets/                    # Background images + diagrams
 │   ├── App.jsx                    # Routes configuration
 │   ├── main.jsx                   # React entry point
@@ -142,8 +159,12 @@ stylesense-ai/
 
 ### Prerequisites
 - Node.js 18+
+<<<<<<< HEAD
 - A MongoDB Atlas account (free)
 - A Cloudinary account (free tier available)
+=======
+- A Supabase account (free)
+>>>>>>> origin/main
 - A Groq account (free)
 
 ### 1. Clone the Repository
@@ -157,6 +178,7 @@ cd classified
 npm install
 ```
 
+<<<<<<< HEAD
 ### 3. Set Up MongoDB
 
 Go to [cloud.mongodb.com](https://cloud.mongodb.com) and create a free MongoDB Atlas account. Create a new cluster and database.
@@ -178,6 +200,50 @@ Go to [cloudinary.com](https://cloudinary.com) and create a free account.
 Go to [console.groq.com](https://console.groq.com) → API Keys → Create API Key → set expiry to **No Expiration**
 
 ### 6. Create Environment Variables
+=======
+### 3. Set Up Supabase
+
+Go to [supabase.com](https://supabase.com) and create a new project. Then run this SQL in the Supabase SQL Editor:
+
+```sql
+-- Create inventory table
+CREATE TABLE inventory (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  category TEXT NOT NULL,
+  occasion TEXT[] DEFAULT '{}',
+  body_types TEXT[] DEFAULT '{}',
+  colors TEXT[] DEFAULT '{}',
+  price DECIMAL(10,2) NOT NULL,
+  image_url TEXT,
+  description TEXT,
+  sizes TEXT[] DEFAULT '{"S","M","L","XL"}',
+  in_stock BOOLEAN DEFAULT true,
+  store_name TEXT DEFAULT 'StyleSense Store',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Create staff table
+CREATE TABLE staff (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  username TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  store_name TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Create default admin account (password: stylesense123)
+INSERT INTO staff (username, password_hash, store_name)
+VALUES ('admin', '$2b$10$CV19c6pXMXp6eABcn87J9./4dc81/.J/..chXtK5MgL7/3/Q9PEAa', 'StyleSense Store');
+```
+
+Create a Storage bucket named `product-images` and set it to **public**.
+
+### 4. Get a Groq API Key
+Go to [console.groq.com](https://console.groq.com) → API Keys → Create API Key → set expiry to **No Expiration**
+
+### 5. Create Environment Variables
+>>>>>>> origin/main
 
 Create a `.env` file in the project root:
 
@@ -185,6 +251,7 @@ Create a `.env` file in the project root:
 # Groq AI
 GROQ_API_KEY=your_groq_api_key_here
 
+<<<<<<< HEAD
 # MongoDB
 MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/stylesense
 
@@ -192,12 +259,21 @@ MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/stylesense
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
+=======
+# Supabase
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+>>>>>>> origin/main
 
 # JWT Auth
 STAFF_JWT_SECRET=your_secret_key_here
 ```
 
+<<<<<<< HEAD
 ### 7. Run the Development Server
+=======
+### 6. Run the Development Server
+>>>>>>> origin/main
 
 You need **two terminals** running simultaneously:
 
@@ -213,7 +289,11 @@ npm run dev
 ```
 App opens at `http://localhost:5173`
 
+<<<<<<< HEAD
 ### 8. Access the App
+=======
+### 7. Access the App
+>>>>>>> origin/main
 
 | URL | Description |
 |---|---|
@@ -284,7 +364,11 @@ else                                → Rectangle ▬
    - **Framework:** Vite
    - **Build Command:** `npm run build`
    - **Output Directory:** `dist`
+<<<<<<< HEAD
 5. Add environment variables
+=======
+5. Add Supabase environment variables
+>>>>>>> origin/main
 6. Deploy
 
 ---
@@ -315,10 +399,15 @@ PATCH  /api/inventory/:id/stock  Toggle stock status
 | Variable | Description | Where to get |
 |---|---|---|
 | `GROQ_API_KEY` | Groq LLM API key | console.groq.com |
+<<<<<<< HEAD
 | `MONGODB_URI` | MongoDB Atlas connection string | cloud.mongodb.com |
 | `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name | cloudinary.com dashboard |
 | `CLOUDINARY_API_KEY` | Cloudinary API key | cloudinary.com dashboard |
 | `CLOUDINARY_API_SECRET` | Cloudinary API secret | cloudinary.com dashboard |
+=======
+| `VITE_SUPABASE_URL` | Your Supabase project URL | Supabase dashboard → Settings → API |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anonymous key | Supabase dashboard → Settings → API |
+>>>>>>> origin/main
 | `STAFF_JWT_SECRET` | Secret for JWT signing | Any random string |
 
 ---
@@ -358,7 +447,11 @@ MIT License — see [LICENSE](LICENSE) for details.
 - **WeMakeDevs** — Vision Possible: Agent Protocol Hackathon
 - **Google** — MediaPipe Pose for body landmark detection
 - **Groq** — Ultra-fast LLaMA inference API
+<<<<<<< HEAD
 - **MongoDB** — NoSQL database for flexible data storage
+=======
+- **Supabase** — Open source Firebase alternative
+>>>>>>> origin/main
 - **Ian Goodfellow et al.** — Original GAN paper (NeurIPS 2014)
 
 ---

@@ -16,6 +16,10 @@
     "@mediapipe/drawing_utils": "^0.3.1675466124",
     "@mediapipe/pose": "^0.5.1675469404",
     "@stream-io/video-react-sdk": "^1.32.4",
+<<<<<<< HEAD
+=======
+    "@supabase/supabase-js": "^2.98.0",
+>>>>>>> origin/main
     "autoflow-sdk": "^1.0.0",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^1.41.3",
