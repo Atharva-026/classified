@@ -7,9 +7,19 @@ services:
     envVars:
       - key: GROQ_API_KEY
         sync: false
+<<<<<<< HEAD
+      - key: MONGODB_URI
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+=======
       - key: VITE_SUPABASE_URL
         sync: false
       - key: VITE_SUPABASE_ANON_KEY
+>>>>>>> origin/main
         sync: false
       - key: STAFF_JWT_SECRET
         sync: false

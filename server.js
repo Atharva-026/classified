@@ -18,11 +18,31 @@ app.use(cors())
 app.use(express.json())
 
 // ── MongoDB Connection ────────────────────────────────────
+<<<<<<< HEAD
+const mongodbUri = process.env.MONGODB_URI
+if (!mongodbUri) {
+  console.warn("⚠️ MONGODB_URI not set - database operations will fail")
+} else {
+  mongoose.connect(mongodbUri, {
+    connectTimeoutMS: 5000,
+    serverSelectionTimeoutMS: 5000
+  })
+    .then(() => console.log("✅ MongoDB connected"))
+    .catch(err => console.error("❌ MongoDB error:", err.message))
+}
+
+// ── Cloudinary Config ─────────────────────────────────────
+if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY) {
+  console.warn("⚠️ Cloudinary credentials not set - image upload will fail")
+}
+
+=======
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log("✅ MongoDB connected"))
   .catch(err => console.error("❌ MongoDB error:", err))
 
 // ── Cloudinary Config ─────────────────────────────────────
+>>>>>>> origin/main
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key:    process.env.CLOUDINARY_API_KEY,
